@@ -6,5 +6,8 @@ export const webRoutes = {
   users: '/users',
   about: '/about',
   category: '/category',
-  article: '/article',
+  article: '/articles',
+  articleCreate: '/articles/create',
+  articleEdit: '/articles/edit/:slug',
+  articlePreview: '/articles/preview/:slug',
 };

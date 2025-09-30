@@ -32,6 +32,18 @@ const ArticleListPage = loadable(
     fallback: fallbackElement,
   }
 );
+const ArticleFormPage = loadable(
+  () => import('@/pages/articles/articleFormPage'),
+  {
+    fallback: fallbackElement,
+  }
+);
+const ArticlePreviewPage = loadable(
+  () => import('@/pages/articles/articlePreviewPage'),
+  {
+    fallback: fallbackElement,
+  }
+);
 const AboutPage = loadable(() => import('@/pages/aboutPage'), {
   fallback: fallbackElement,
 });
@@ -79,6 +91,18 @@ export const browserRouter = createBrowserRouter([
       {
         path: webRoutes.article,
         element: <ArticleListPage />,
+      },
+      {
+        path: webRoutes.articleCreate,
+        element: <ArticleFormPage />,
+      },
+      {
+        path: webRoutes.articleEdit,
+        element: <ArticleFormPage />,
+      },
+      {
+        path: webRoutes.articlePreview,
+        element: <ArticlePreviewPage />,
       },
       {
         path: webRoutes.about,

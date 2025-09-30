@@ -1,14 +1,18 @@
-import { generateSlug, generateUniqueSlug } from '@/lib/utils';
-import { Category, CreateCategoryRequest, categoryService } from '@/services';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { Article, articleService } from '@/services';
+import {
+  CheckOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
-  Form,
-  Input,
-  Modal,
+  Dropdown,
+  Image,
   Popconfirm,
-  Select,
   Space,
   Table,
   Tag,
@@ -16,133 +20,211 @@ import {
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const { Title } = Typography;
-const { TextArea } = Input;
 
-const CategoryPage = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
+const ArticleListPage = () => {
+  const navigate = useNavigate();
+  const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [form] = Form.useForm();
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [selectedArticles, setSelectedArticles] = useState<Article[]>([]);
+  const [bulkAction, setBulkAction] = useState<string>('');
 
-  // Fetch categories
-  const fetchCategories = async () => {
+  // Fetch articles
+  const fetchArticles = async () => {
     setLoading(true);
     try {
-      const data = await categoryService.getCategories();
-      setCategories(data);
+      const data = await articleService.getArticles();
+      setArticles(data);
     } catch (error) {
-      message.error('Failed to fetch categories');
+      message.error('Failed to fetch articles');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCategories();
+    fetchArticles();
   }, []);
 
-  // Handle create/update category
-  const handleSubmit = async (values: CreateCategoryRequest) => {
+  // Handle delete article
+  const handleDelete = async (id: string) => {
     try {
-      if (editingCategory) {
-        await categoryService.updateCategory(editingCategory.id!, values);
-        message.success('Category updated successfully');
-      } else {
-        await categoryService.createCategory(values);
-        message.success('Category created successfully');
-      }
-      setModalVisible(false);
-      setEditingCategory(null);
-      form.resetFields();
-      fetchCategories();
+      await articleService.deleteArticle(id);
+      message.success('Article deleted successfully');
+      fetchArticles();
     } catch (error) {
-      message.error('Failed to save category');
+      message.error('Failed to delete article');
     }
   };
 
-  // Handle delete category
-  const handleDelete = async (id: number) => {
-    try {
-      await categoryService.deleteCategory(id);
-      message.success('Category deleted successfully');
-      fetchCategories();
-    } catch (error) {
-      message.error('Failed to delete category');
-    }
-  };
-
-  // Open modal for create
+  // Navigate to create article page
   const handleCreate = () => {
-    setEditingCategory(null);
-    setModalVisible(true);
-    form.resetFields();
+    navigate('/articles/create');
   };
 
-  // Open modal for edit
-  const handleEdit = (category: Category) => {
-    setEditingCategory(category);
-    setModalVisible(true);
-    form.setFieldsValue({
-      name: category.name,
-      slug: category.slug,
-      image: category.image,
-      parent_id: category.parent_id,
-      description: category.description,
-    });
+  // Navigate to edit article page
+  const handleEdit = (article: Article) => {
+    navigate(`/articles/edit/${article.slug}`);
   };
 
-  // Get available parent categories (all categories except current one if editing)
-  const getAvailableParentCategories = () => {
-    return categories.filter((cat) => {
-      // Exclude current category if editing to prevent self-parenting
-      if (editingCategory && cat.id === editingCategory.id) {
-        return false;
-      }
-      return true;
-    });
+  // Handle preview article
+  const handlePreview = (article: Article) => {
+    navigate(`/articles/preview/${article.slug}`);
   };
 
-  // Get category name by ID
-  const getCategoryName = (id: number) => {
-    const category = categories.find((cat) => cat.id === id);
-    return category?.name || 'Unknown';
+  // Handle row selection
+  const onSelectChange = (
+    newSelectedRowKeys: React.Key[],
+    newSelectedRows: Article[]
+  ) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+    setSelectedArticles(newSelectedRows);
   };
 
-  // Handle name change to auto-generate slug
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const name = e.target.value;
-
-    // Generate slug from the new name
-    const newSlug = generateSlug(name);
-
-    // Get existing slugs (excluding current category if editing)
-    const existingSlugs = categories
-      .filter((cat) => !editingCategory || cat.id !== editingCategory.id)
-      .map((cat) => cat.slug);
-
-    // Generate unique slug
-    const uniqueSlug = generateUniqueSlug(newSlug, existingSlugs);
-
-    // Update the slug field
-    form.setFieldValue('slug', uniqueSlug);
+  // Row selection configuration
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+    selections: [
+      Table.SELECTION_ALL,
+      Table.SELECTION_INVERT,
+      Table.SELECTION_NONE,
+    ],
   };
+
+  // Handle bulk action
+  const handleBulkAction = async () => {
+    if (!bulkAction) {
+      message.warning('Please select an action');
+      return;
+    }
+
+    if (selectedArticles.length === 0) {
+      message.warning('Please select articles to perform the action');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const promises = selectedArticles.map(async (article) => {
+        switch (bulkAction) {
+          case 'publish':
+            return articleService.updateArticle(article.id, {
+              title: article.title,
+              slug: article.slug,
+              content: article.content,
+              short_description: article.short_description,
+              meta_description: article.meta_description,
+              keywords: article.keywords,
+              category_ids: article.categories.map((cat) => cat.id),
+              published: true,
+              image: article.image,
+              thumbnail: article.thumbnail,
+            });
+          case 'draft':
+            return articleService.updateArticle(article.id, {
+              title: article.title,
+              slug: article.slug,
+              content: article.content,
+              short_description: article.short_description,
+              meta_description: article.meta_description,
+              keywords: article.keywords,
+              category_ids: article.categories.map((cat) => cat.id),
+              published: false,
+              image: article.image,
+              thumbnail: article.thumbnail,
+            });
+          case 'delete':
+            return articleService.deleteArticle(article.id);
+          default:
+            return Promise.resolve();
+        }
+      });
+
+      await Promise.all(promises);
+
+      const actionText =
+        bulkAction === 'delete'
+          ? 'deleted'
+          : bulkAction === 'publish'
+          ? 'published'
+          : 'moved to draft';
+
+      message.success(
+        `${selectedArticles.length} article(s) ${actionText} successfully`
+      );
+
+      // Clear selection and refresh data
+      setSelectedRowKeys([]);
+      setSelectedArticles([]);
+      setBulkAction('');
+      fetchArticles();
+    } catch (error) {
+      message.error('Failed to perform bulk action');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Bulk action items
+  const bulkActionItems = [
+    {
+      key: 'publish',
+      label: 'Publish',
+      icon: <CheckOutlined />,
+    },
+    {
+      key: 'draft',
+      label: 'Move to Draft',
+      icon: <EditOutlined />,
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      icon: <DeleteOutlined />,
+      danger: true,
+    },
+  ];
 
   // Table columns
   const columns = [
     {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record: Category) => (
+      title: 'Thumbnail',
+      dataIndex: 'thumbnail',
+      key: 'thumbnail',
+      width: 80,
+      render: (thumbnail: string) => (
+        <Image
+          src={thumbnail}
+          alt="Article thumbnail"
+          width={50}
+          height={50}
+          style={{ objectFit: 'cover', borderRadius: 4 }}
+          fallback="https://placehold.co/200x150"
+        />
+      ),
+    },
+    {
+      title: 'Title',
+      dataIndex: 'title',
+      key: 'title',
+      render: (title: string, record: Article) => (
         <div>
-          <div style={{ fontWeight: 'bold' }}>{name}</div>
-          {record.parent_id && (
-            <Tag color="blue">
-              Child of: {getCategoryName(record.parent_id)}
-            </Tag>
+          <div style={{ fontWeight: 'bold' }}>{title}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            by {record.author.name}
+          </div>
+          {record.categories.length > 0 && (
+            <div style={{ marginTop: 4 }}>
+              {record.categories.map((cat) => (
+                <Tag key={cat.id} color="blue">
+                  {cat.name}
+                </Tag>
+              ))}
+            </div>
           )}
         </div>
       ),
@@ -164,16 +246,28 @@ const CategoryPage = () => {
       ),
     },
     {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
+      title: 'Status',
+      dataIndex: 'published',
+      key: 'published',
+      width: 100,
+      render: (published: boolean) => (
+        <Tag color={published ? 'green' : 'orange'}>
+          {published ? 'Published' : 'Draft'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Views',
+      dataIndex: 'views',
+      key: 'views',
+      width: 80,
+      render: (views: number) => views || 0,
     },
     {
       title: 'Created At',
       dataIndex: 'created_at',
       key: 'created_at',
-      width: 150,
+      width: 120,
       render: (date: string) =>
         date ? new Date(date).toLocaleDateString() : '-',
     },
@@ -181,8 +275,15 @@ const CategoryPage = () => {
       title: 'Actions',
       key: 'actions',
       width: 150,
-      render: (_: any, record: Category) => (
+      render: (_: any, record: Article) => (
         <Space>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => handlePreview(record)}
+          >
+            Preview
+          </Button>
           <Button
             type="primary"
             size="small"
@@ -192,8 +293,8 @@ const CategoryPage = () => {
             Edit
           </Button>
           <Popconfirm
-            title="Are you sure you want to delete this category?"
-            onConfirm={() => handleDelete(record.id!)}
+            title="Are you sure you want to delete this article?"
+            onConfirm={() => handleDelete(record.id)}
             okText="Yes"
             cancelText="No"
           >
@@ -223,108 +324,81 @@ const CategoryPage = () => {
           }}
         >
           <Title level={3} style={{ margin: 0 }}>
-            Category Management
+            Article Management
           </Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-            Add Category
+            Add Article
           </Button>
         </div>
 
+        {/* Bulk Actions */}
+        {selectedRowKeys.length > 0 && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              backgroundColor: '#f0f8ff',
+              borderRadius: 6,
+              border: '1px solid #d6e4ff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <span style={{ color: '#1890ff', fontWeight: 500 }}>
+              {selectedRowKeys.length} article(s) selected
+            </span>
+            <Dropdown
+              menu={{
+                items: bulkActionItems,
+                onClick: ({ key }) => setBulkAction(key),
+              }}
+              trigger={['click']}
+            >
+              <Button>
+                {bulkAction
+                  ? bulkActionItems.find((item) => item.key === bulkAction)
+                      ?.label
+                  : 'Bulk Actions'}{' '}
+                <DownOutlined />
+              </Button>
+            </Dropdown>
+            <Button
+              type="primary"
+              onClick={handleBulkAction}
+              disabled={!bulkAction}
+            >
+              Apply
+            </Button>
+            <Button
+              onClick={() => {
+                setSelectedRowKeys([]);
+                setSelectedArticles([]);
+                setBulkAction('');
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+
         <Table
           columns={columns}
-          dataSource={categories}
+          dataSource={articles}
           rowKey="id"
           loading={loading}
+          rowSelection={rowSelection}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) =>
-              `${range[0]}-${range[1]} of ${total} categories`,
+              `${range[0]}-${range[1]} of ${total} articles`,
           }}
         />
-
-        <Modal
-          title={editingCategory ? 'Edit Category' : 'Create Category'}
-          open={modalVisible}
-          onCancel={() => {
-            setModalVisible(false);
-            setEditingCategory(null);
-            form.resetFields();
-          }}
-          footer={null}
-          width={600}
-        >
-          <Form form={form} layout="vertical" onFinish={handleSubmit}>
-            <Form.Item
-              name="name"
-              label="Category Name"
-              rules={[
-                { required: true, message: 'Please enter category name' },
-              ]}
-            >
-              <Input
-                placeholder="Enter category name"
-                onChange={handleNameChange}
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="slug"
-              label="Slug"
-              rules={[{ required: true, message: 'Please enter slug' }]}
-              extra="Auto-generated from category name, but you can edit it manually"
-            >
-              <Input placeholder="Enter slug (e.g., travel-tips)" />
-            </Form.Item>
-
-            <Form.Item name="image" label="Image URL">
-              <Input placeholder="Enter image URL" />
-            </Form.Item>
-
-            <Form.Item name="parent_id" label="Parent Category">
-              <Select
-                placeholder="Select parent category (optional)"
-                allowClear
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-                options={getAvailableParentCategories().map((cat) => ({
-                  value: cat.id,
-                  label: cat.name,
-                }))}
-              />
-            </Form.Item>
-
-            <Form.Item name="description" label="Description">
-              <TextArea rows={4} placeholder="Enter category description" />
-            </Form.Item>
-
-            <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-              <Space>
-                <Button
-                  onClick={() => {
-                    setModalVisible(false);
-                    setEditingCategory(null);
-                    form.resetFields();
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button type="primary" htmlType="submit">
-                  {editingCategory ? 'Update' : 'Create'}
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </Modal>
       </Card>
     </div>
   );
 };
 
-export default CategoryPage;
+export default ArticleListPage;
