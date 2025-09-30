@@ -1,14 +1,14 @@
-import { createBrowserRouter } from 'react-router-dom';
-import AuthLayout from '@/components/layout/authLayout';
-import ErrorPage from '@/pages/errors/errorPage';
 import Layout from '@/components/layout';
+import AuthLayout from '@/components/layout/authLayout';
 import Redirect from '@/components/layout/redirect';
+import ProgressBar from '@/components/loader/progressBar';
+import LoginPage from '@/pages/auth/loginPage';
+import ErrorPage from '@/pages/errors/errorPage';
 import NotFoundPage from '@/pages/errors/notfoundPage';
+import RequireAuth from '@/routes/requireAuth';
 import { webRoutes } from '@/routes/web';
 import loadable from '@loadable/component';
-import ProgressBar from '@/components/loader/progressBar';
-import RequireAuth from '@/routes/requireAuth';
-import LoginPage from '@/pages/auth/loginPage';
+import { createBrowserRouter } from 'react-router-dom';
 
 const errorElement = <ErrorPage />;
 const fallbackElement = <ProgressBar />;
@@ -19,6 +19,19 @@ const DashboardPage = loadable(() => import('@/pages/dashboardPage'), {
 const UserListPage = loadable(() => import('@/pages/users/userListPage'), {
   fallback: fallbackElement,
 });
+
+const CategoryListPage = loadable(
+  () => import('@/pages/category/cagegoryListPage'),
+  {
+    fallback: fallbackElement,
+  }
+);
+const ArticleListPage = loadable(
+  () => import('@/pages/articles/articleListPage'),
+  {
+    fallback: fallbackElement,
+  }
+);
 const AboutPage = loadable(() => import('@/pages/aboutPage'), {
   fallback: fallbackElement,
 });
@@ -58,6 +71,14 @@ export const browserRouter = createBrowserRouter([
       {
         path: webRoutes.users,
         element: <UserListPage />,
+      },
+      {
+        path: webRoutes.category,
+        element: <CategoryListPage />,
+      },
+      {
+        path: webRoutes.article,
+        element: <ArticleListPage />,
       },
       {
         path: webRoutes.about,

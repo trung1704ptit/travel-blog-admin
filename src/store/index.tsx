@@ -1,29 +1,28 @@
-import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import adminSlice, { AdminState } from '@/store/slices/adminSlice';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import {
-  persistReducer,
   FLUSH,
-  REHYDRATE,
   PAUSE,
   PERSIST,
+  persistReducer,
   PURGE,
   REGISTER,
+  REHYDRATE,
 } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 
-const persistConfig = {
-  key: CONFIG.appName,
+// Persist config for admin/auth only
+const adminPersistConfig = {
+  key: 'admin',
   storage,
 };
 
 const rootReducer = combineReducers({
-  admin: adminSlice,
+  admin: persistReducer(adminPersistConfig, adminSlice),
 });
 
-const persistedReducer = persistReducer(persistConfig, rootReducer);
-
 export const store = configureStore({
-  reducer: persistedReducer,
+  reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {

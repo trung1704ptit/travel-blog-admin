@@ -5,4 +5,6 @@ export const webRoutes = {
   dashboard: '/dashboard',
   users: '/users',
   about: '/about',
+  category: '/category',
+  article: '/article',
 };
