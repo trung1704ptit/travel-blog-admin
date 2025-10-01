@@ -119,10 +119,13 @@ const ArticleListPage = () => {
               short_description: article.short_description,
               meta_description: article.meta_description,
               keywords: article.keywords,
-              category_ids: article.categories.map((cat) => cat.id),
+              categories: article.categories.map((cat) => ({ id: cat.id })),
               published: true,
               image: article.image,
               thumbnail: article.thumbnail,
+              author: {
+                id: article.author.id,
+              },
             });
           case 'draft':
             return articleService.updateArticle(article.id, {
@@ -132,10 +135,13 @@ const ArticleListPage = () => {
               short_description: article.short_description,
               meta_description: article.meta_description,
               keywords: article.keywords,
-              category_ids: article.categories.map((cat) => cat.id),
+              categories: article.categories.map((cat) => ({ id: cat.id })),
               published: false,
               image: article.image,
               thumbnail: article.thumbnail,
+              author: {
+                id: article.author.id,
+              },
             });
           case 'delete':
             return articleService.deleteArticle(article.id);
@@ -163,6 +169,7 @@ const ArticleListPage = () => {
       setBulkAction('');
       fetchArticles();
     } catch (error) {
+      console.log(error);
       message.error('Failed to perform bulk action');
     } finally {
       setLoading(false);
@@ -217,7 +224,7 @@ const ArticleListPage = () => {
           <div style={{ fontSize: '12px', color: '#666' }}>
             by {record.author.name}
           </div>
-          {record.categories.length > 0 && (
+          {record?.categories?.length > 0 && (
             <div style={{ marginTop: 4 }}>
               {record.categories.map((cat) => (
                 <Tag key={cat.id} color="blue">

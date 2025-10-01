@@ -22,16 +22,7 @@ const ArticlePreviewPage = () => {
 
     setLoading(true);
     try {
-      // Get all articles to find the one with matching slug
-      const articles = await articleService.getArticles();
-      const articleData = articles.find((article) => article.slug === slug);
-
-      if (!articleData) {
-        message.error('Article not found');
-        navigate('/articles');
-        return;
-      }
-
+      const articleData = await articleService.getArticleBySlug(slug);
       setArticle(articleData);
     } catch (error) {
       message.error('Failed to fetch article');
@@ -125,7 +116,7 @@ const ArticlePreviewPage = () => {
                 alignItems: 'center',
               }}
             >
-              {article.categories.length > 0 && (
+              {article?.categories?.length > 0 && (
                 <div>
                   <strong>Categories: </strong>
                   {article.categories.map((cat) => (
@@ -135,10 +126,10 @@ const ArticlePreviewPage = () => {
                   ))}
                 </div>
               )}
-              {article.keywords.length > 0 && (
+              {article?.keywords?.length > 0 && (
                 <div>
                   <strong>Keywords: </strong>
-                  {article.keywords.map((keyword) => (
+                  {article?.keywords?.map((keyword) => (
                     <Tag key={keyword} color="green" style={{ marginLeft: 4 }}>
                       {keyword}
                     </Tag>

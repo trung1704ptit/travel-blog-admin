@@ -61,8 +61,11 @@ export interface CreateArticleRequest {
   meta_description?: string;
   keywords?: string[];
   tags?: string[];
-  category_ids?: string[];
+  categories?: Array<{ id: string }>;
   published?: boolean;
+  author?: {
+    id: string;
+  };
 }
 
 // Article service
@@ -102,13 +105,24 @@ export const articleService = {
     }
   },
 
+  // Get article by slug
+  getArticleBySlug: async (slug: string): Promise<Article> => {
+    try {
+      const response = await http.get(`/articles/slug/${slug}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching article by slug:', error);
+      throw error;
+    }
+  },
+
   // Update article
   updateArticle: async (
     id: string,
     articleData: Partial<CreateArticleRequest>
   ): Promise<Article> => {
     try {
-      const response = await http.put(`/articles/${id}`, articleData);
+      const response = await http.patch(`/articles/${id}`, articleData);
       return response.data;
     } catch (error) {
       console.error('Error updating article:', error);

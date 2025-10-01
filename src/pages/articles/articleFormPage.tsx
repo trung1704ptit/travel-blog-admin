@@ -23,7 +23,6 @@ import {
   Select,
   Space,
   Switch,
-  Tag,
   Typography,
   Upload,
   message,
@@ -43,8 +42,6 @@ const ArticleFormPage = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [newKeyword, setNewKeyword] = useState('');
 
   // Fetch categories
   const fetchCategories = async () => {
@@ -62,16 +59,7 @@ const ArticleFormPage = () => {
 
     setLoading(true);
     try {
-      // First get all articles to find the one with matching slug
-      const articles = await articleService.getArticles();
-      const articleData = articles.find((article) => article.slug === slug);
-
-      if (!articleData) {
-        message.error('Article not found');
-        navigate('/articles');
-        return;
-      }
-
+      const articleData = await articleService.getArticleBySlug(slug);
       setArticle(articleData);
 
       // Set form values
@@ -84,12 +72,10 @@ const ArticleFormPage = () => {
         short_description: articleData.short_description,
         meta_description: articleData.meta_description,
         tags: articleData.tags,
-        category_ids: articleData.categories.map((cat) => cat.id),
+        keywords: articleData.keywords,
+        categories: articleData.categories?.[0]?.id || undefined,
         published: articleData.published,
       });
-
-      // Set keywords state
-      setKeywords(articleData.keywords || []);
     } catch (error) {
       message.error('Failed to fetch article');
       navigate('/articles');
@@ -122,19 +108,6 @@ const ArticleFormPage = () => {
     form.setFieldValue('slug', uniqueSlug);
   };
 
-  // Handle adding new keyword
-  const handleAddKeyword = () => {
-    if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) {
-      setKeywords([...keywords, newKeyword.trim()]);
-      setNewKeyword('');
-    }
-  };
-
-  // Handle removing keyword
-  const handleRemoveKeyword = (keywordToRemove: string) => {
-    setKeywords(keywords.filter((keyword) => keyword !== keywordToRemove));
-  };
-
   // Handle preview
   const handlePreview = () => {
     const formValues = form.getFieldsValue();
@@ -149,12 +122,25 @@ const ArticleFormPage = () => {
   };
 
   // Handle form submission
-  const handleSubmit = async (values: CreateArticleRequest) => {
+  const handleSubmit = async (values: any) => {
     setLoading(true);
     try {
-      const submitData = {
-        ...values,
-        keywords: keywords,
+      // Explicitly extract only the fields we need to avoid circular references
+      const submitData: CreateArticleRequest = {
+        title: values.title,
+        slug: values.slug,
+        content: values.content || '',
+        thumbnail: values.thumbnail,
+        image: values.image,
+        short_description: values.short_description,
+        meta_description: values.meta_description,
+        keywords: values.keywords || [],
+        tags: values.tags || [],
+        categories: values.categories ? [{ id: values.categories }] : [],
+        published: values.published || false,
+        author: {
+          id: '550e8400-e29b-41d4-a716-446655440000', // Default author ID
+        },
       };
 
       if (isEditMode && article) {
@@ -166,6 +152,7 @@ const ArticleFormPage = () => {
       }
       navigate('/articles');
     } catch (error) {
+      console.error('Submit error:', error);
       message.error('Failed to save article');
     } finally {
       setLoading(false);
@@ -173,28 +160,21 @@ const ArticleFormPage = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
+    <div className="px-3 pt-3 pb-6">
       <Card>
-        <div
-          style={{
-            marginBottom: 24,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className="mb-6 flex justify-between items-center flex-wrap gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <Button
               icon={<ArrowLeftOutlined />}
               onClick={() => navigate('/articles')}
             >
               Back to Articles
             </Button>
-            <Title level={3} style={{ margin: 0 }}>
-              {isEditMode ? 'Edit Article' : 'Create New Article'}
+            <Title level={3} className="!m-0">
+              {isEditMode ? 'Edit Article' : 'Create Article'}
             </Title>
           </div>
-          <Space>
+          <Space wrap>
             <Button icon={<EyeOutlined />} onClick={handlePreview}>
               Preview
             </Button>
@@ -215,9 +195,9 @@ const ArticleFormPage = () => {
           onFinish={handleSubmit}
           disabled={loading}
         >
-          <Row gutter={24}>
-            <Col span={16}>
-              <Card title="Article Content" style={{ marginBottom: 24 }}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={24} md={24} lg={16} xl={16}>
+              <Card title="Article Content" className="mb-6">
                 <Form.Item
                   name="title"
                   label="Article Title"
@@ -263,49 +243,131 @@ const ArticleFormPage = () => {
                   name="content"
                   label="Content"
                   rules={[{ required: true, message: 'Please enter content' }]}
+                  trigger="onEditorChange"
+                  getValueFromEvent={(content: string) => {
+                    // Ensure we only get the string content, not the editor object
+                    return typeof content === 'string' ? content : '';
+                  }}
                 >
                   <Editor
-                    apiKey="no-api-key" // You can get a free API key from TinyMCE
+                    apiKey={import.meta.env.VITE_TINYMCE_API_KEY} // You can get a free API key from TinyMCE
                     init={{
-                      height: 400,
-                      menubar: false,
+                      height: 2000,
+                      menubar: 'file edit view insert format tools table help',
+                      // ALL FREE PLAN PLUGINS
                       plugins: [
-                        'advlist',
-                        'autolink',
-                        'lists',
-                        'link',
-                        'image',
-                        'charmap',
-                        'preview',
-                        'anchor',
-                        'searchreplace',
-                        'visualblocks',
-                        'code',
-                        'fullscreen',
-                        'insertdatetime',
-                        'media',
-                        'table',
-                        'help',
-                        'wordcount',
+                        'advlist', // Advanced list options
+                        'anchor', // Anchor/bookmark functionality
+                        'autolink', // Automatically create links
+                        'autoresize', // Auto-resize editor to fit content
+                        'charmap', // Special characters map
+                        'code', // HTML source code editor
+                        'codesample', // Code syntax highlighting
+                        'directionality', // Text directionality (LTR/RTL)
+                        'emoticons', // Emoji picker
+                        'fullscreen', // Fullscreen mode
+                        'help', // Help dialog
+                        'image', // Image insertion and editing
+                        'importcss', // Import CSS classes
+                        'insertdatetime', // Insert current date/time
+                        'link', // Link creation and editing
+                        'lists', // List handling
+                        'media', // Embed media (video, audio)
+                        'nonbreaking', // Non-breaking space
+                        'pagebreak', // Page break
+                        'preview', // Preview content
+                        'quickbars', // Quick toolbar on selection
+                        'save', // Save button
+                        'searchreplace', // Find and replace
+                        'table', // Table creation and editing
+                        'visualblocks', // Show block elements
+                        'visualchars', // Show invisible characters
+                        'wordcount', // Word and character counter
                       ],
-                      toolbar:
-                        'undo redo | blocks | ' +
-                        'bold italic forecolor | alignleft aligncenter ' +
-                        'alignright alignjustify | bullist numlist outdent indent | ' +
-                        'removeformat | help',
+                      // COMPREHENSIVE TOOLBAR (all free tools) - Multiple rows to show everything
+                      toolbar: [
+                        'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | removeformat',
+                        'alignleft aligncenter alignright alignjustify | bullist numlist | outdent indent | link image media table',
+                        'codesample emoticons charmap | insertdatetime pagebreak anchor | searchreplace visualblocks visualchars code fullscreen | preview help',
+                      ],
+                      // Show all toolbar buttons without clicking additional menu
+                      toolbar_mode: 'wrap',
+                      // Quick toolbar for text selection
+                      quickbars_selection_toolbar:
+                        'bold italic underline | quicklink blockquote',
+                      quickbars_insert_toolbar: 'quickimage quicktable',
+                      // Font options
+                      font_family_formats:
+                        'Andale Mono=andale mono,times; Arial=arial,helvetica,sans-serif; ' +
+                        'Arial Black=arial black,avant garde; Book Antiqua=book antiqua,palatino; ' +
+                        'Comic Sans MS=comic sans ms,sans-serif; Courier New=courier new,courier; ' +
+                        'Georgia=georgia,palatino; Helvetica=helvetica; Impact=impact,chicago; ' +
+                        'Symbol=symbol; Tahoma=tahoma,arial,helvetica,sans-serif; ' +
+                        'Terminal=terminal,monaco; Times New Roman=times new roman,times; ' +
+                        'Trebuchet MS=trebuchet ms,geneva; Verdana=verdana,geneva; ' +
+                        'Webdings=webdings; Wingdings=wingdings,zapf dingbats',
+                      font_size_formats:
+                        '8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt',
+                      // Block formats
+                      block_formats:
+                        'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; ' +
+                        'Heading 4=h4; Heading 5=h5; Heading 6=h6; Preformatted=pre',
+                      // Image settings
+                      image_advtab: true,
+                      image_caption: true,
+                      image_title: true,
+                      // Link settings
+                      link_title: true,
+                      link_target_list: [
+                        { title: 'None', value: '' },
+                        { title: 'New window', value: '_blank' },
+                        { title: 'Same window', value: '_self' },
+                        { title: 'Parent window', value: '_parent' },
+                      ],
+                      // Table settings
+                      table_toolbar:
+                        'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter ' +
+                        'tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol',
+                      table_appearance_options: true,
+                      table_grid: true,
+                      table_resize_bars: true,
+                      table_default_styles: {
+                        width: '100%',
+                      },
+                      // Code sample settings
+                      codesample_languages: [
+                        { text: 'HTML/XML', value: 'markup' },
+                        { text: 'JavaScript', value: 'javascript' },
+                        { text: 'CSS', value: 'css' },
+                        { text: 'PHP', value: 'php' },
+                        { text: 'Ruby', value: 'ruby' },
+                        { text: 'Python', value: 'python' },
+                        { text: 'Java', value: 'java' },
+                        { text: 'C', value: 'c' },
+                        { text: 'C#', value: 'csharp' },
+                        { text: 'C++', value: 'cpp' },
+                      ],
+                      // Content styling
                       content_style:
-                        'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
-                    }}
-                    onEditorChange={(content: string) => {
-                      form.setFieldValue('content', content);
+                        'body { font-family:Helvetica,Arial,sans-serif; font-size:16px; line-height: 1.6; }',
+                      // Auto-resize to content
+                      autoresize_bottom_margin: 50,
+                      autoresize_overflow_padding: 50,
+                      // Other useful settings
+                      branding: false, // Remove "Powered by TinyMCE" (available in free plan)
+                      elementpath: true, // Show element path in status bar
+                      paste_as_text: false, // Allow rich text pasting
+                      paste_data_images: true, // Allow pasted images
+                      contextmenu: 'link image table', // Right-click context menu
+                      nonbreaking_force_tab: true, // Use non-breaking space for tab
                     }}
                   />
                 </Form.Item>
               </Card>
             </Col>
 
-            <Col span={8}>
-              <Card title="Article Settings" style={{ marginBottom: 24 }}>
+            <Col xs={24} sm={24} md={24} lg={8} xl={8}>
+              <Card title="Article Settings" className="mb-6">
                 <Form.Item
                   name="published"
                   label="Published"
@@ -314,10 +376,10 @@ const ArticleFormPage = () => {
                   <Switch />
                 </Form.Item>
 
-                <Form.Item name="category_ids" label="Categories">
+                <Form.Item name="categories" label="Category">
                   <Select
-                    mode="multiple"
-                    placeholder="Select categories"
+                    placeholder="Select category"
+                    allowClear
                     showSearch
                     optionFilterProp="children"
                     filterOption={(input, option) =>
@@ -332,41 +394,44 @@ const ArticleFormPage = () => {
                   />
                 </Form.Item>
 
-                <Form.Item label="Keywords">
-                  <div style={{ marginBottom: 8 }}>
-                    <Input
-                      placeholder="Enter keyword"
-                      value={newKeyword}
-                      onChange={(e) => setNewKeyword(e.target.value)}
-                      onPressEnter={handleAddKeyword}
-                      style={{ marginBottom: 8 }}
-                    />
-                    <Button
-                      type="dashed"
-                      onClick={handleAddKeyword}
-                      disabled={!newKeyword.trim()}
-                    >
-                      Add Keyword
-                    </Button>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {keywords.map((keyword) => (
-                      <Tag
-                        key={keyword}
-                        closable
-                        onClose={() => handleRemoveKeyword(keyword)}
-                        color="blue"
-                      >
-                        {keyword}
-                      </Tag>
-                    ))}
-                  </div>
+                <Form.Item name="tags" label="Tags">
+                  <Select
+                    mode="tags"
+                    placeholder="Enter tags (press comma or enter to add)"
+                    className="w-full"
+                    tokenSeparators={[',']}
+                    showSearch
+                    optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      (option?.label ?? '')
+                        .toString()
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                    }
+                  />
+                </Form.Item>
+
+                <Form.Item name="keywords" label="Keywords">
+                  <Select
+                    mode="tags"
+                    placeholder="Enter keywords (press comma or enter to add)"
+                    className="w-full"
+                    tokenSeparators={[',']}
+                    showSearch
+                    optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      (option?.label ?? '')
+                        .toString()
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                    }
+                  />
                 </Form.Item>
               </Card>
 
-              <Card title="Media" style={{ marginBottom: 24 }}>
+              <Card title="Media" className="mb-6">
                 <Form.Item name="thumbnail" label="Thumbnail">
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <div className="flex gap-2 mb-2">
                     <Input placeholder="Enter thumbnail URL" />
                     <Upload
                       showUploadList={false}
@@ -383,7 +448,7 @@ const ArticleFormPage = () => {
                 </Form.Item>
 
                 <Form.Item name="image" label="Featured Image">
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <div className="flex gap-2 mb-2">
                     <Input placeholder="Enter featured image URL" />
                     <Upload
                       showUploadList={false}

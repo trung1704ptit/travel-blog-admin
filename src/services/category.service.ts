@@ -27,7 +27,7 @@ export const categoryService = {
   // Get all categories
   getCategories: async (): Promise<Category[]> => {
     try {
-      const response = await http.get('/categories');
+      const response = await http.get('/categories?limit=100&page=0');
       return response.data;
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -65,7 +65,7 @@ export const categoryService = {
     categoryData: Partial<CreateCategoryRequest>
   ): Promise<Category> => {
     try {
-      const response = await http.put(`/categories/${id}`, categoryData);
+      const response = await http.patch(`/categories/${id}`, categoryData);
       return response.data;
     } catch (error) {
       console.error('Error updating category:', error);

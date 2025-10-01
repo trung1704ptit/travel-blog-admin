@@ -96,7 +96,7 @@ const CategoryPage = () => {
 
   // Get available parent categories (all categories except current one if editing)
   const getAvailableParentCategories = () => {
-    return categories.filter((cat) => {
+    return categories?.filter((cat) => {
       // Exclude current category if editing to prevent self-parenting
       if (editingCategory && cat.id === editingCategory.id) {
         return false;
@@ -107,7 +107,7 @@ const CategoryPage = () => {
 
   // Get category name by ID
   const getCategoryName = (id: number) => {
-    const category = categories.find((cat) => cat.id === id);
+    const category = categories?.find((cat) => cat.id === id);
     return category?.name || 'Unknown';
   };
 
@@ -293,7 +293,7 @@ const CategoryPage = () => {
                     .toLowerCase()
                     .includes(input.toLowerCase())
                 }
-                options={getAvailableParentCategories().map((cat) => ({
+                options={getAvailableParentCategories()?.map((cat) => ({
                   value: cat.id,
                   label: cat.name,
                 }))}
