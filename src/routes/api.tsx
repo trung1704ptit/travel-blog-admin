@@ -1,5 +1,4 @@
-export const BACKEND_API_URL =
-  import.meta.env.VITE_BACKEND_API_URL || 'https://reqres.in/api';
+export const BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL;
 
 export const apiRoutes = {
   login: `${BACKEND_API_URL}/login`,

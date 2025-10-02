@@ -1,5 +1,11 @@
-import { useEffect, useState } from 'react';
+import StatCard from '@/components/dashboard/statCard';
 import BasePageContainer from '@/components/layout/pageContainer';
+import LazyImage from '@/components/lazy-image';
+import { Review } from '@/interfaces/review';
+import { User } from '@/interfaces/user';
+import { webRoutes } from '@/routes/web';
+import Icon from '@ant-design/icons';
+import { StatisticCard } from '@ant-design/pro-components';
 import {
   Avatar,
   BreadcrumbProps,
@@ -12,20 +18,12 @@ import {
   Table,
   Tag,
 } from 'antd';
-import { webRoutes } from '@/routes/web';
-import { Link } from 'react-router-dom';
-import StatCard from '@/components/dashboard/statCard';
+import { useEffect, useState } from 'react';
 import { AiOutlineStar, AiOutlineTeam } from 'react-icons/ai';
-import Icon from '@ant-design/icons';
 import { BiCommentDetail, BiPhotoAlbum } from 'react-icons/bi';
 import { MdOutlineArticle, MdOutlinePhoto } from 'react-icons/md';
-import { StatisticCard } from '@ant-design/pro-components';
-import LazyImage from '@/components/lazy-image';
-import { User } from '@/interfaces/user';
-import http from '@/lib/http';
-import { apiRoutes } from '@/routes/api';
-import { handleErrorResponse } from '@/lib/utils';
-import { Review } from '@/interfaces/review';
+import { Link } from 'react-router-dom';
+// CONFIG is available globally
 
 const breadcrumb: BreadcrumbProps = {
   items: [
@@ -38,61 +36,104 @@ const breadcrumb: BreadcrumbProps = {
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState<boolean>(true);
-  const [users, setUsers] = useState<User[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
+
+  // Hardcoded user data
+  const [users] = useState<User[]>([
+    {
+      id: '1',
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+      role: 'user',
+      provider: 'local',
+      created_at: '2025-01-01T00:00:00.000Z',
+      updated_at: '2025-01-01T00:00:00.000Z',
+      first_name: 'John',
+      last_name: 'Doe',
+      avatar: 'https://i.pravatar.cc/150?img=1',
+    },
+    {
+      id: '2',
+      name: 'Jane Smith',
+      email: 'jane.smith@example.com',
+      role: 'user',
+      provider: 'local',
+      created_at: '2025-01-01T00:00:00.000Z',
+      updated_at: '2025-01-01T00:00:00.000Z',
+      first_name: 'Jane',
+      last_name: 'Smith',
+      avatar: 'https://i.pravatar.cc/150?img=2',
+    },
+    {
+      id: '3',
+      name: 'Mike Johnson',
+      email: 'mike.johnson@example.com',
+      role: 'user',
+      provider: 'local',
+      created_at: '2025-01-01T00:00:00.000Z',
+      updated_at: '2025-01-01T00:00:00.000Z',
+      first_name: 'Mike',
+      last_name: 'Johnson',
+      avatar: 'https://i.pravatar.cc/150?img=3',
+    },
+    {
+      id: '4',
+      name: 'Sarah Wilson',
+      email: 'sarah.wilson@example.com',
+      role: 'user',
+      provider: 'local',
+      created_at: '2025-01-01T00:00:00.000Z',
+      updated_at: '2025-01-01T00:00:00.000Z',
+      first_name: 'Sarah',
+      last_name: 'Wilson',
+      avatar: 'https://i.pravatar.cc/150?img=4',
+    },
+  ]);
+
+  // Hardcoded review data
+  const [reviews] = useState<Review[]>([
+    {
+      id: 1,
+      title: 'Amazing Travel Experience',
+      color: 'blue',
+      year: '2024',
+      star: 5,
+    },
+    {
+      id: 2,
+      title: 'Great Hotel Service',
+      color: 'green',
+      year: '2024',
+      star: 4,
+    },
+    {
+      id: 3,
+      title: 'Beautiful Destination',
+      color: 'orange',
+      year: '2023',
+      star: 5,
+    },
+    {
+      id: 4,
+      title: 'Excellent Food',
+      color: 'purple',
+      year: '2023',
+      star: 4,
+    },
+    {
+      id: 5,
+      title: 'Wonderful Adventure',
+      color: 'red',
+      year: '2024',
+      star: 5,
+    },
+  ]);
 
   useEffect(() => {
-    Promise.all([loadUsers(), loadReviews()])
-      .then(() => {
-        setLoading(false);
-      })
-      .catch((error) => {
-        handleErrorResponse(error);
-      });
+    // Simulate loading time
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
   }, []);
-
-  const loadUsers = () => {
-    return http
-      .get(apiRoutes.users, {
-        params: {
-          per_page: 4,
-        },
-      })
-      .then((response) => {
-        setUsers(response.data.data);
-      })
-      .catch((error) => {
-        handleErrorResponse(error);
-      });
-  };
-
-  const loadReviews = () => {
-    return http
-      .get(apiRoutes.reviews, {
-        params: {
-          per_page: 5,
-        },
-      })
-      .then((response) => {
-        setReviews(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          response.data.data.map((rawReview: any) => {
-            const review: Review = {
-              id: rawReview.id,
-              title: rawReview.name,
-              color: rawReview.color,
-              year: rawReview.year,
-              star: Math.floor(Math.random() * 5) + 1,
-            };
-
-            return review;
-          })
-        );
-      })
-      .catch((error) => {
-        handleErrorResponse(error);
-      });
-  };
 
   return (
     <BasePageContainer breadcrumb={breadcrumb} transparent={true}>
@@ -102,23 +143,23 @@ const DashboardPage = () => {
             loading={loading}
             icon={<Icon component={AiOutlineTeam} />}
             title="Users"
-            number={12}
+            number={1247}
           />
         </Col>
         <Col xl={6} lg={6} md={12} sm={24} xs={24} style={{ marginBottom: 24 }}>
           <StatCard
             loading={loading}
             icon={<Icon component={MdOutlineArticle} />}
-            title="Posts"
-            number={100}
+            title="Articles"
+            number={89}
           />
         </Col>
         <Col xl={6} lg={6} md={12} sm={24} xs={24} style={{ marginBottom: 24 }}>
           <StatCard
             loading={loading}
             icon={<Icon component={BiPhotoAlbum} />}
-            title="Albums"
-            number={100}
+            title="Categories"
+            number={15}
           />
         </Col>
         <Col xl={6} lg={6} md={12} sm={24} xs={24} style={{ marginBottom: 24 }}>
@@ -126,7 +167,7 @@ const DashboardPage = () => {
             loading={loading}
             icon={<Icon component={MdOutlinePhoto} />}
             title="Photos"
-            number={500}
+            number={2341}
           />
         </Col>
         <Col xl={6} lg={6} md={12} sm={24} xs={24} style={{ marginBottom: 24 }}>
@@ -134,7 +175,7 @@ const DashboardPage = () => {
             loading={loading}
             icon={<Icon component={BiCommentDetail} />}
             title="Comments"
-            number={500}
+            number={567}
           />
         </Col>
         <Col xl={6} lg={6} md={12} sm={24} xs={24} style={{ marginBottom: 24 }}>
@@ -142,7 +183,7 @@ const DashboardPage = () => {
             loading={loading}
             icon={<Icon component={AiOutlineStar} />}
             title="Reviews"
-            number={100}
+            number={234}
           />
         </Col>
         <Col
@@ -157,19 +198,19 @@ const DashboardPage = () => {
             <StatisticCard.Group direction="row">
               <StatisticCard
                 statistic={{
-                  title: 'XYZ',
-                  value: loading ? 0 : 123,
+                  title: 'Total Views',
+                  value: loading ? 0 : 45678,
                 }}
               />
               <StatisticCard
                 statistic={{
-                  title: 'Progress',
-                  value: 'ABC',
+                  title: 'Engagement',
+                  value: '85%',
                 }}
                 chart={
                   <Progress
                     className="text-rfprimary"
-                    percent={loading ? 0 : 75}
+                    percent={loading ? 0 : 85}
                     type="circle"
                     size={'small'}
                     strokeColor={CONFIG.theme.accentColor}
@@ -201,16 +242,23 @@ const DashboardPage = () => {
                         shape="circle"
                         size="small"
                         src={
-                          <LazyImage
-                            src={user.avatar}
-                            placeholder={
-                              <div className="bg-gray-100 h-full w-full" />
-                            }
-                          />
+                          user.avatar ? (
+                            <LazyImage
+                              src={user.avatar}
+                              placeholder={
+                                <div className="bg-gray-100 h-full w-full" />
+                              }
+                            />
+                          ) : undefined
                         }
-                      />
+                      >
+                        {user.name?.charAt(0).toUpperCase() || 'U'}
+                      </Avatar>
                     }
-                    title={`${user.first_name} ${user.last_name}`}
+                    title={
+                      user.name ||
+                      `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                    }
                     description={user.email}
                   />
                 </List.Item>

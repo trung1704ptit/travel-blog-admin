@@ -1,3 +1,4 @@
+import { RootState } from '@/store';
 import { logout } from '@/store/slices/adminSlice';
 import { Store } from '@reduxjs/toolkit';
 import axios from 'axios';
@@ -10,7 +11,7 @@ export const injectStore = (_store: Store) => {
 
 export const defaultHttp = axios.create();
 const http = axios.create({
-  baseURL: 'http://localhost:9090',
+  baseURL: 'http://localhost:8000/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -19,14 +20,12 @@ const http = axios.create({
 
 http.interceptors.request.use(
   (config) => {
-    // const state: RootState = store.getState();
-    // const apiToken = state.admin?.token;
+    const state: RootState = store.getState();
+    const apiToken = state.admin?.token;
 
-    // // config.headers['x-api-key'] = 'reqres-free-v1';
-
-    // if (apiToken) {
-    //   config.headers.Authorization = `Bearer ${apiToken}`;
-    // }
+    if (apiToken) {
+      config.headers.Authorization = `Bearer ${apiToken}`;
+    }
     return config;
   },
   (error) => {

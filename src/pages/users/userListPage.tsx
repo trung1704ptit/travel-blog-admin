@@ -1,31 +1,30 @@
-import {
-  ActionType,
-  ProTable,
-  ProColumns,
-  RequestData,
-  TableDropdown,
-  ProDescriptions,
-} from '@ant-design/pro-components';
-import { Avatar, BreadcrumbProps, Modal, Space } from 'antd';
-import { useRef } from 'react';
-import { FiUsers } from 'react-icons/fi';
-import { CiCircleMore } from 'react-icons/ci';
-import { Link } from 'react-router-dom';
+import BasePageContainer from '@/components/layout/pageContainer';
+import LazyImage from '@/components/lazy-image';
 import { User } from '@/interfaces/user';
-import { apiRoutes } from '@/routes/api';
-import { webRoutes } from '@/routes/web';
 import {
   handleErrorResponse,
   NotificationType,
   showNotification,
 } from '@/lib/utils';
-import http from '@/lib/http';
-import BasePageContainer from '@/components/layout/pageContainer';
-import LazyImage from '@/components/lazy-image';
+import { webRoutes } from '@/routes/web';
+import { userService } from '@/services/user.service';
 import Icon, {
-  ExclamationCircleOutlined,
   DeleteOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
+import {
+  ActionType,
+  ProColumns,
+  ProDescriptions,
+  ProTable,
+  RequestData,
+  TableDropdown,
+} from '@ant-design/pro-components';
+import { Avatar, BreadcrumbProps, Modal, Space } from 'antd';
+import { useRef } from 'react';
+import { CiCircleMore } from 'react-icons/ci';
+import { FiUsers } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 
 enum ActionKey {
   DELETE = 'delete',
@@ -68,7 +67,7 @@ const UserListPage = () => {
           />
         ) : (
           <Avatar shape="circle" size="small">
-            {row.first_name.charAt(0).toUpperCase()}
+            {row.name?.charAt(0).toUpperCase() || 'U'}
           </Avatar>
         ),
     },
@@ -78,7 +77,8 @@ const UserListPage = () => {
       sorter: false,
       align: 'center',
       ellipsis: true,
-      render: (_, row: User) => `${row.first_name} ${row.last_name}`,
+      render: (_, row: User) =>
+        row.name || `${row.first_name || ''} ${row.last_name || ''}`.trim(),
     },
     {
       title: 'Email',
@@ -130,7 +130,8 @@ const UserListPage = () => {
             {user.avatar}
           </ProDescriptions.Item>
           <ProDescriptions.Item valueType="text" label="Name">
-            {user.first_name} {user.last_name}
+            {user.name ||
+              `${user.first_name || ''} ${user.last_name || ''}`.trim()}
           </ProDescriptions.Item>
           <ProDescriptions.Item valueType="text" label="Email">
             {user.email}
@@ -138,8 +139,8 @@ const UserListPage = () => {
         </ProDescriptions>
       ),
       onOk: () => {
-        return http
-          .delete(`${apiRoutes.users}/${user.id}`)
+        return userService
+          .deleteUser(user.id)
           .then(() => {
             showNotification(
               'Success',
@@ -179,31 +180,26 @@ const UserListPage = () => {
           pageSize: 10,
         }}
         actionRef={actionRef}
-        request={(params) => {
-          return http
-            .get(apiRoutes.users, {
-              params: {
-                page: params.current,
-                per_page: params.pageSize,
-              },
-            })
-            .then((response) => {
-              const users: [User] = response.data.data;
+        request={async (params) => {
+          try {
+            const response = await userService.getUsers(
+              params.current || 1,
+              params.pageSize || 10
+            );
 
-              return {
-                data: users,
-                success: true,
-                total: response.data.total,
-              } as RequestData<User>;
-            })
-            .catch((error) => {
-              handleErrorResponse(error);
+            return {
+              data: response.data,
+              success: true,
+              total: response.total,
+            } as RequestData<User>;
+          } catch (error) {
+            handleErrorResponse(error);
 
-              return {
-                data: [],
-                success: false,
-              } as RequestData<User>;
-            });
+            return {
+              data: [],
+              success: false,
+            } as RequestData<User>;
+          }
         }}
         dateFormatter="string"
         search={false}

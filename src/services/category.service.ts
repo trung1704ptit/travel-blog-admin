@@ -27,8 +27,8 @@ export const categoryService = {
   // Get all categories
   getCategories: async (): Promise<Category[]> => {
     try {
-      const response = await http.get('/categories?limit=100&page=0');
-      return response.data;
+      const response = await http.get('/categories');
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw error;

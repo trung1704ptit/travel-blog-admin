@@ -10,6 +10,26 @@ export const setPageTitle = (title: string) => {
   window.document.title = title;
 };
 
+// Check if user is logged in via cookie (for page reload persistence)
+export const isLoggedIn = (): boolean => {
+  const loggedInCookie = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('logged_in='))
+    ?.split('=')[1];
+
+  return loggedInCookie === 'true';
+};
+
+// Get cookie value by name
+export const getCookie = (name: string): string | null => {
+  const value = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${name}=`))
+    ?.split('=')[1];
+
+  return value || null;
+};
+
 export const showNotification = (
   message = 'Something went wrong',
   type: NotificationType = NotificationType.ERROR,

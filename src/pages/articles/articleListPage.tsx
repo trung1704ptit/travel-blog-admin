@@ -1,4 +1,4 @@
-import { Article, articleService } from '@/services';
+import { Article, Category, articleService, categoryService } from '@/services';
 import {
   CheckOutlined,
   DeleteOutlined,
@@ -12,7 +12,9 @@ import {
   Card,
   Dropdown,
   Image,
+  Input,
   Popconfirm,
+  Select,
   Space,
   Table,
   Tag,
@@ -23,14 +25,21 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const { Title } = Typography;
+const { Search } = Input;
 
 const ArticleListPage = () => {
   const navigate = useNavigate();
   const [articles, setArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [selectedArticles, setSelectedArticles] = useState<Article[]>([]);
   const [bulkAction, setBulkAction] = useState<string>('');
+  const [searchText, setSearchText] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(
+    undefined
+  );
+  const [pageSize, setPageSize] = useState<number>(100);
 
   // Fetch articles
   const fetchArticles = async () => {
@@ -45,8 +54,19 @@ const ArticleListPage = () => {
     }
   };
 
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const data = await categoryService.getCategories();
+      setCategories(data);
+    } catch (error) {
+      message.error('Failed to fetch categories');
+    }
+  };
+
   useEffect(() => {
     fetchArticles();
+    fetchCategories();
   }, []);
 
   // Handle delete article
@@ -113,35 +133,11 @@ const ArticleListPage = () => {
         switch (bulkAction) {
           case 'publish':
             return articleService.updateArticle(article.id, {
-              title: article.title,
-              slug: article.slug,
-              content: article.content,
-              short_description: article.short_description,
-              meta_description: article.meta_description,
-              keywords: article.keywords,
-              categories: article.categories.map((cat) => ({ id: cat.id })),
               published: true,
-              image: article.image,
-              thumbnail: article.thumbnail,
-              author: {
-                id: article.author.id,
-              },
             });
           case 'draft':
             return articleService.updateArticle(article.id, {
-              title: article.title,
-              slug: article.slug,
-              content: article.content,
-              short_description: article.short_description,
-              meta_description: article.meta_description,
-              keywords: article.keywords,
-              categories: article.categories.map((cat) => ({ id: cat.id })),
               published: false,
-              image: article.image,
-              thumbnail: article.thumbnail,
-              author: {
-                id: article.author.id,
-              },
             });
           case 'delete':
             return articleService.deleteArticle(article.id);
@@ -319,23 +315,69 @@ const ArticleListPage = () => {
     },
   ];
 
+  // Filter articles based on search text and category
+  const filteredArticles = articles.filter((article) => {
+    // Search filter
+    const searchLower = searchText.toLowerCase();
+    const matchesSearch =
+      !searchText ||
+      article.title.toLowerCase().includes(searchLower) ||
+      article.slug.toLowerCase().includes(searchLower) ||
+      article.author.name.toLowerCase().includes(searchLower) ||
+      article.categories?.some((cat) =>
+        cat.name.toLowerCase().includes(searchLower)
+      ) ||
+      article.tags?.some((tag) => tag.toLowerCase().includes(searchLower));
+
+    // Category filter
+    const matchesCategory =
+      !selectedCategory ||
+      article.categories?.some((cat) => cat.id === selectedCategory);
+
+    return matchesSearch && matchesCategory;
+  });
+
   return (
-    <div style={{ padding: 24 }}>
+    <div className="p-6">
       <Card>
-        <div
-          style={{
-            marginBottom: 16,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Title level={3} style={{ margin: 0 }}>
+        <div className="mb-4 flex justify-between items-center flex-wrap gap-4">
+          <Title level={3} className="!m-0">
             Article Management
           </Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
             Add Article
           </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="mb-4 flex gap-4 flex-wrap">
+          <Search
+            placeholder="Search articles by title, author, or tags..."
+            allowClear
+            enterButton
+            size="middle"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onSearch={(value) => setSearchText(value)}
+            style={{ maxWidth: 300 }}
+          />
+          <Select
+            placeholder="Filter by category"
+            allowClear
+            showSearch
+            size="middle"
+            value={selectedCategory}
+            onChange={(value) => setSelectedCategory(value)}
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={categories.map((cat) => ({
+              value: cat.id,
+              label: cat.name,
+            }))}
+            style={{ width: 250 }}
+          />
         </div>
 
         {/* Bulk Actions */}
@@ -391,14 +433,16 @@ const ArticleListPage = () => {
 
         <Table
           columns={columns}
-          dataSource={articles}
+          dataSource={filteredArticles}
           rowKey="id"
           loading={loading}
           rowSelection={rowSelection}
           pagination={{
-            pageSize: 10,
+            pageSize: pageSize,
             showSizeChanger: true,
             showQuickJumper: true,
+            pageSizeOptions: ['50', '100', '150', '200'],
+            onShowSizeChange: (current, size) => setPageSize(size),
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} articles`,
           }}

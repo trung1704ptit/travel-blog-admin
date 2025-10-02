@@ -1,14 +1,13 @@
-import { Button, Form, Input } from 'antd';
-import { Fragment, useEffect, useState } from 'react';
-import { apiRoutes } from '@/routes/api';
-import { useDispatch, useSelector } from 'react-redux';
-import { login } from '@/store/slices/adminSlice';
-import { RootState } from '@/store';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { webRoutes } from '@/routes/web';
-import { handleErrorResponse, setPageTitle } from '@/lib/utils';
 import { Admin } from '@/interfaces/admin';
-import { defaultHttp } from '@/lib/http';
+import http from '@/lib/http';
+import { setPageTitle } from '@/lib/utils';
+import { webRoutes } from '@/routes/web';
+import { RootState } from '@/store';
+import { login } from '@/store/slices/adminSlice';
+import { Button, Form, Input, message } from 'antd';
+import { Fragment, useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface FormValues {
   email: string;
@@ -29,37 +28,44 @@ const LoginPage = () => {
   }, []);
 
   useEffect(() => {
-    if (admin) {
+    // Only redirect if user has valid token in Redux state (persisted via localStorage)
+    if (admin && admin.token) {
       navigate(from, { replace: true });
     }
-  }, [admin]);
+  }, [admin, from, navigate]);
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
     setLoading(true);
 
-    defaultHttp
-      .post(
-        apiRoutes.login,
-        {
-          email: values.email,
-          password: values.password,
-        },
-        {
-          headers: {
-            'x-api-key': 'reqres-free-v1',
-          },
-        }
-      )
-      .then((response) => {
+    try {
+      const response = await http.post('/auth/login', {
+        email: values.email,
+        password: values.password,
+      });
+
+      // Check if login was successful based on response
+      if (response.data.status === 'success' && response.data.access_token) {
         const admin: Admin = {
-          token: response.data.token,
+          token: response.data.access_token,
         };
         dispatch(login(admin));
-      })
-      .catch((error) => {
-        handleErrorResponse(error);
-        setLoading(false);
-      });
+        message.success('Login successful!');
+        navigate(from, { replace: true });
+      } else {
+        message.error('Login failed: Invalid response from server');
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      if (error.response?.status === 401) {
+        message.error('Invalid email or password');
+      } else if (error.response?.status === 422) {
+        message.error('Please check your email and password format');
+      } else {
+        message.error('Login failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

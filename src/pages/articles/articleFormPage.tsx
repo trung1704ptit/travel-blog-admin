@@ -27,6 +27,7 @@ import {
   Upload,
   message,
 } from 'antd';
+import castArray from 'lodash/castArray';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -134,13 +135,10 @@ const ArticleFormPage = () => {
         image: values.image,
         short_description: values.short_description,
         meta_description: values.meta_description,
-        keywords: values.keywords || [],
-        tags: values.tags || [],
-        categories: values.categories ? [{ id: values.categories }] : [],
+        keywords: values.keywords,
+        tags: values.tags,
+        categories: castArray(values.categories),
         published: values.published || false,
-        author: {
-          id: '550e8400-e29b-41d4-a716-446655440000', // Default author ID
-        },
       };
 
       if (isEditMode && article) {

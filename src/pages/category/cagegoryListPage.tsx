@@ -11,14 +11,13 @@ import {
   Select,
   Space,
   Table,
-  Tag,
   Typography,
   message,
 } from 'antd';
 import { useEffect, useState } from 'react';
 
 const { Title } = Typography;
-const { TextArea } = Input;
+const { TextArea, Search } = Input;
 
 const CategoryPage = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -26,6 +25,8 @@ const CategoryPage = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [form] = Form.useForm();
+  const [searchText, setSearchText] = useState<string>('');
+  const [pageSize, setPageSize] = useState<number>(100);
 
   // Fetch categories
   const fetchCategories = async () => {
@@ -140,9 +141,9 @@ const CategoryPage = () => {
         <div>
           <div style={{ fontWeight: 'bold' }}>{name}</div>
           {record.parent_id && (
-            <Tag color="blue">
-              Child of: {getCategoryName(record.parent_id)}
-            </Tag>
+            <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+              Parent: {getCategoryName(record.parent_id)}
+            </div>
           )}
         </div>
       ),
@@ -211,18 +212,26 @@ const CategoryPage = () => {
     },
   ];
 
+  // Filter categories based on search text and flatten the data
+  const filteredCategories = categories
+    ?.filter((category) => {
+      const searchLower = searchText.toLowerCase();
+      return (
+        category.name.toLowerCase().includes(searchLower) ||
+        category.slug.toLowerCase().includes(searchLower) ||
+        category.description?.toLowerCase().includes(searchLower)
+      );
+    })
+    .map((category) => ({
+      ...category,
+      children: undefined, // Remove children property to make it flat
+    }));
+
   return (
-    <div style={{ padding: 24 }}>
+    <div className="p-6">
       <Card>
-        <div
-          style={{
-            marginBottom: 16,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Title level={3} style={{ margin: 0 }}>
+        <div className="mb-4 flex justify-between items-center flex-wrap gap-4">
+          <Title level={3} className="!m-0">
             Category Management
           </Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
@@ -230,15 +239,31 @@ const CategoryPage = () => {
           </Button>
         </div>
 
+        {/* Search Input */}
+        <div className="mb-4">
+          <Search
+            placeholder="Search categories by name, slug, or description..."
+            allowClear
+            enterButton
+            size="middle"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onSearch={(value) => setSearchText(value)}
+            style={{ maxWidth: 300 }}
+          />
+        </div>
+
         <Table
           columns={columns}
-          dataSource={categories}
+          dataSource={filteredCategories}
           rowKey="id"
           loading={loading}
           pagination={{
-            pageSize: 10,
+            pageSize: pageSize,
             showSizeChanger: true,
             showQuickJumper: true,
+            pageSizeOptions: ['50', '100', '150', '200'],
+            onShowSizeChange: (current, size) => setPageSize(size),
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} categories`,
           }}

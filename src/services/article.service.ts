@@ -73,10 +73,10 @@ export const articleService = {
   // Get all articles
   getArticles: async (): Promise<Article[]> => {
     try {
-      const response = await http.get('/articles');
-      return response.data;
+      const response = await http.get('/posts');
+      return response.data.data;
     } catch (error) {
-      console.error('Error fetching articles:', error);
+      console.error('Error fetching posts:', error);
       throw error;
     }
   },
@@ -86,10 +86,10 @@ export const articleService = {
     articleData: CreateArticleRequest
   ): Promise<Article> => {
     try {
-      const response = await http.post('/articles', articleData);
+      const response = await http.post('/posts', articleData);
       return response.data;
     } catch (error) {
-      console.error('Error creating article:', error);
+      console.error('Error creating posts:', error);
       throw error;
     }
   },
@@ -97,7 +97,7 @@ export const articleService = {
   // Get article by ID
   getArticleById: async (id: string): Promise<Article> => {
     try {
-      const response = await http.get(`/articles/${id}`);
+      const response = await http.get(`/posts/${id}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching article:', error);
@@ -108,8 +108,8 @@ export const articleService = {
   // Get article by slug
   getArticleBySlug: async (slug: string): Promise<Article> => {
     try {
-      const response = await http.get(`/articles/slug/${slug}`);
-      return response.data;
+      const response = await http.get(`/posts/${slug}`);
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching article by slug:', error);
       throw error;
@@ -122,7 +122,7 @@ export const articleService = {
     articleData: Partial<CreateArticleRequest>
   ): Promise<Article> => {
     try {
-      const response = await http.patch(`/articles/${id}`, articleData);
+      const response = await http.patch(`/posts/${id}`, articleData);
       return response.data;
     } catch (error) {
       console.error('Error updating article:', error);
@@ -133,7 +133,7 @@ export const articleService = {
   // Delete article
   deleteArticle: async (id: string): Promise<void> => {
     try {
-      await http.delete(`/articles/${id}`);
+      await http.delete(`/posts/${id}`);
     } catch (error) {
       console.error('Error deleting article:', error);
       throw error;

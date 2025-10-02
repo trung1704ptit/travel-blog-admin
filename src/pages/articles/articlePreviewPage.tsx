@@ -154,7 +154,7 @@ const ArticlePreviewPage = () => {
                 {article.published ? 'Published' : 'Draft'}
               </Tag>
               <span style={{ color: '#666' }}>
-                by <strong>{article.author.name}</strong>
+                by <strong>{article.author?.name}</strong>
               </span>
               <span style={{ color: '#999', fontSize: 14 }}>
                 {new Date(article.created_at).toLocaleDateString()}

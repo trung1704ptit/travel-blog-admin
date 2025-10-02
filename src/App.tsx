@@ -1,6 +1,6 @@
-import { Toaster } from 'sonner';
-import { RouterProvider } from 'react-router-dom';
 import { browserRouter } from '@/routes/browserRouter';
+import { RouterProvider } from 'react-router-dom';
+import { Toaster } from 'sonner';
 
 function App() {
   return (
