@@ -84,12 +84,23 @@ export const handleErrorResponse = (
 export const generateSlug = (title: string): string => {
   if (!title) return '';
 
-  return title
-    .toLowerCase() // Convert to lowercase
-    .trim() // Remove leading/trailing whitespace
-    .replace(/[^\w\s-]/g, '') // Remove special characters except word chars, spaces, and hyphens
-    .replace(/[\s_-]+/g, '-') // Replace spaces, underscores, and multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
+  return (
+    title
+      .toString()
+      // Normalize: turn "é" → "e", "đ" → "d"
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // remove diacritics
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D') // Vietnamese special
+      // Lowercase
+      .toLowerCase()
+      // Replace anything not alphanumeric (Unicode letters) with -
+      .replace(/[^a-z0-9\u4e00-\u9fff\u3040-\u30ff\u0600-\u06ff]+/g, '-')
+      // Trim -
+      .replace(/^-+|-+$/g, '')
+      // Avoid multiple -
+      .replace(/-{2,}/g, '-')
+  );
 };
 
 /**

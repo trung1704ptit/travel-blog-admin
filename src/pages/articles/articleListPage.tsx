@@ -381,55 +381,52 @@ const ArticleListPage = () => {
         </div>
 
         {/* Bulk Actions */}
-        {selectedRowKeys.length > 0 && (
-          <div
-            style={{
-              marginBottom: 16,
-              padding: 12,
-              backgroundColor: '#f0f8ff',
-              borderRadius: 6,
-              border: '1px solid #d6e4ff',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            backgroundColor: '#f0f8ff',
+            borderRadius: 6,
+            border: '1px solid #d6e4ff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <span style={{ color: '#1890ff', fontWeight: 500 }}>
+            {selectedRowKeys.length} article(s) selected
+          </span>
+          <Dropdown
+            menu={{
+              items: bulkActionItems,
+              onClick: ({ key }) => setBulkAction(key),
+            }}
+            trigger={['click']}
+          >
+            <Button>
+              {bulkAction
+                ? bulkActionItems.find((item) => item.key === bulkAction)?.label
+                : 'Bulk Actions'}{' '}
+              <DownOutlined />
+            </Button>
+          </Dropdown>
+          <Button
+            type="primary"
+            onClick={handleBulkAction}
+            disabled={!bulkAction}
+          >
+            Apply
+          </Button>
+          <Button
+            onClick={() => {
+              setSelectedRowKeys([]);
+              setSelectedArticles([]);
+              setBulkAction('');
             }}
           >
-            <span style={{ color: '#1890ff', fontWeight: 500 }}>
-              {selectedRowKeys.length} article(s) selected
-            </span>
-            <Dropdown
-              menu={{
-                items: bulkActionItems,
-                onClick: ({ key }) => setBulkAction(key),
-              }}
-              trigger={['click']}
-            >
-              <Button>
-                {bulkAction
-                  ? bulkActionItems.find((item) => item.key === bulkAction)
-                      ?.label
-                  : 'Bulk Actions'}{' '}
-                <DownOutlined />
-              </Button>
-            </Dropdown>
-            <Button
-              type="primary"
-              onClick={handleBulkAction}
-              disabled={!bulkAction}
-            >
-              Apply
-            </Button>
-            <Button
-              onClick={() => {
-                setSelectedRowKeys([]);
-                setSelectedArticles([]);
-                setBulkAction('');
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
+            Cancel
+          </Button>
+        </div>
 
         <Table
           columns={columns}

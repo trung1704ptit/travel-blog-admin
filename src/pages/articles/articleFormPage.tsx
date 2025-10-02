@@ -6,8 +6,10 @@ import {
   articleService,
   categoryService,
 } from '@/services';
+import { cloudinaryService } from '@/services/cloudinary.service';
 import {
   ArrowLeftOutlined,
+  DeleteOutlined,
   EyeOutlined,
   SaveOutlined,
   UploadOutlined,
@@ -18,10 +20,12 @@ import {
   Card,
   Col,
   Form,
+  Image,
   Input,
   Row,
   Select,
   Space,
+  Spin,
   Switch,
   Typography,
   Upload,
@@ -42,6 +46,7 @@ const ArticleFormPage = () => {
   const [article, setArticle] = useState<Article | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [form] = Form.useForm();
 
   // Fetch categories
@@ -95,18 +100,66 @@ const ArticleFormPage = () => {
   // Handle title change to auto-generate slug
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const title = e.target.value;
-
-    // Generate slug from the new title
     const newSlug = generateSlug(title);
-
-    // Get existing slugs (excluding current article if editing)
     const existingSlugs = article ? [article.slug] : [];
-
-    // Generate unique slug
     const uniqueSlug = generateUniqueSlug(newSlug, existingSlugs);
-
-    // Update the slug field
     form.setFieldValue('slug', uniqueSlug);
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      message.loading({ content: 'Uploading image...', key: 'upload' });
+
+      // Upload image with thumbnail generation
+      const result = await cloudinaryService.uploadImageWithThumbnail(file, {
+        folder: 'articles',
+        thumbnailWidth: 400,
+        thumbnailHeight: 300,
+      });
+
+      message.success({
+        content: 'Image uploaded successfully!',
+        key: 'upload',
+      });
+
+      // Update form fields
+      form.setFieldsValue({
+        image: result.imageUrl,
+        thumbnail: result.thumbnailUrl,
+      });
+    } catch (error) {
+      message.error({ content: 'Failed to upload image', key: 'upload' });
+      console.error('Upload error:', error);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Handle thumbnail upload (separate)
+  const handleThumbnailUpload = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      message.loading({ content: 'Uploading thumbnail...', key: 'upload' });
+
+      const result = await cloudinaryService.uploadImage(file, {
+        folder: 'articles/thumbnails',
+        transformation: 'c_fill,w_400,h_300,g_auto,q_auto',
+      });
+
+      message.success({
+        content: 'Thumbnail uploaded successfully!',
+        key: 'upload',
+      });
+
+      form.setFieldValue('thumbnail', result.secure_url);
+    } catch (error) {
+      message.error({ content: 'Failed to upload thumbnail', key: 'upload' });
+      console.error('Upload error:', error);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   // Handle preview
@@ -116,8 +169,6 @@ const ArticleFormPage = () => {
       message.warning('Please enter a title to preview');
       return;
     }
-
-    // Generate slug from title if not provided
     const previewSlug = formValues.slug || generateSlug(formValues.title);
     navigate(`/articles/preview/${previewSlug}`);
   };
@@ -126,7 +177,6 @@ const ArticleFormPage = () => {
   const handleSubmit = async (values: any) => {
     setLoading(true);
     try {
-      // Explicitly extract only the fields we need to avoid circular references
       const submitData: CreateArticleRequest = {
         title: values.title,
         slug: values.slug,
@@ -243,58 +293,52 @@ const ArticleFormPage = () => {
                   rules={[{ required: true, message: 'Please enter content' }]}
                   trigger="onEditorChange"
                   getValueFromEvent={(content: string) => {
-                    // Ensure we only get the string content, not the editor object
                     return typeof content === 'string' ? content : '';
                   }}
                 >
                   <Editor
-                    apiKey={import.meta.env.VITE_TINYMCE_API_KEY} // You can get a free API key from TinyMCE
+                    apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
                     init={{
                       height: 2000,
                       menubar: 'file edit view insert format tools table help',
-                      // ALL FREE PLAN PLUGINS
                       plugins: [
-                        'advlist', // Advanced list options
-                        'anchor', // Anchor/bookmark functionality
-                        'autolink', // Automatically create links
-                        'autoresize', // Auto-resize editor to fit content
-                        'charmap', // Special characters map
-                        'code', // HTML source code editor
-                        'codesample', // Code syntax highlighting
-                        'directionality', // Text directionality (LTR/RTL)
-                        'emoticons', // Emoji picker
-                        'fullscreen', // Fullscreen mode
-                        'help', // Help dialog
-                        'image', // Image insertion and editing
-                        'importcss', // Import CSS classes
-                        'insertdatetime', // Insert current date/time
-                        'link', // Link creation and editing
-                        'lists', // List handling
-                        'media', // Embed media (video, audio)
-                        'nonbreaking', // Non-breaking space
-                        'pagebreak', // Page break
-                        'preview', // Preview content
-                        'quickbars', // Quick toolbar on selection
-                        'save', // Save button
-                        'searchreplace', // Find and replace
-                        'table', // Table creation and editing
-                        'visualblocks', // Show block elements
-                        'visualchars', // Show invisible characters
-                        'wordcount', // Word and character counter
+                        'advlist',
+                        'anchor',
+                        'autolink',
+                        'autoresize',
+                        'charmap',
+                        'code',
+                        'codesample',
+                        'directionality',
+                        'emoticons',
+                        'fullscreen',
+                        'help',
+                        'image',
+                        'importcss',
+                        'insertdatetime',
+                        'link',
+                        'lists',
+                        'media',
+                        'nonbreaking',
+                        'pagebreak',
+                        'preview',
+                        'quickbars',
+                        'save',
+                        'searchreplace',
+                        'table',
+                        'visualblocks',
+                        'visualchars',
+                        'wordcount',
                       ],
-                      // COMPREHENSIVE TOOLBAR (all free tools) - Multiple rows to show everything
                       toolbar: [
                         'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | removeformat',
                         'alignleft aligncenter alignright alignjustify | bullist numlist | outdent indent | link image media table',
                         'codesample emoticons charmap | insertdatetime pagebreak anchor | searchreplace visualblocks visualchars code fullscreen | preview help',
                       ],
-                      // Show all toolbar buttons without clicking additional menu
                       toolbar_mode: 'wrap',
-                      // Quick toolbar for text selection
                       quickbars_selection_toolbar:
                         'bold italic underline | quicklink blockquote',
                       quickbars_insert_toolbar: 'quickimage quicktable',
-                      // Font options
                       font_family_formats:
                         'Andale Mono=andale mono,times; Arial=arial,helvetica,sans-serif; ' +
                         'Arial Black=arial black,avant garde; Book Antiqua=book antiqua,palatino; ' +
@@ -306,15 +350,12 @@ const ArticleFormPage = () => {
                         'Webdings=webdings; Wingdings=wingdings,zapf dingbats',
                       font_size_formats:
                         '8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt',
-                      // Block formats
                       block_formats:
                         'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; ' +
                         'Heading 4=h4; Heading 5=h5; Heading 6=h6; Preformatted=pre',
-                      // Image settings
                       image_advtab: true,
                       image_caption: true,
                       image_title: true,
-                      // Link settings
                       link_title: true,
                       link_target_list: [
                         { title: 'None', value: '' },
@@ -322,17 +363,13 @@ const ArticleFormPage = () => {
                         { title: 'Same window', value: '_self' },
                         { title: 'Parent window', value: '_parent' },
                       ],
-                      // Table settings
                       table_toolbar:
                         'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter ' +
                         'tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol',
                       table_appearance_options: true,
                       table_grid: true,
                       table_resize_bars: true,
-                      table_default_styles: {
-                        width: '100%',
-                      },
-                      // Code sample settings
+                      table_default_styles: { width: '100%' },
                       codesample_languages: [
                         { text: 'HTML/XML', value: 'markup' },
                         { text: 'JavaScript', value: 'javascript' },
@@ -345,19 +382,53 @@ const ArticleFormPage = () => {
                         { text: 'C#', value: 'csharp' },
                         { text: 'C++', value: 'cpp' },
                       ],
-                      // Content styling
                       content_style:
                         'body { font-family:Helvetica,Arial,sans-serif; font-size:16px; line-height: 1.6; }',
-                      // Auto-resize to content
                       autoresize_bottom_margin: 50,
                       autoresize_overflow_padding: 50,
-                      // Other useful settings
-                      branding: false, // Remove "Powered by TinyMCE" (available in free plan)
-                      elementpath: true, // Show element path in status bar
-                      paste_as_text: false, // Allow rich text pasting
-                      paste_data_images: true, // Allow pasted images
-                      contextmenu: 'link image table', // Right-click context menu
-                      nonbreaking_force_tab: true, // Use non-breaking space for tab
+                      branding: false,
+                      elementpath: true,
+                      paste_as_text: false,
+                      paste_data_images: true,
+                      contextmenu: 'link image table',
+                      nonbreaking_force_tab: true,
+                      images_upload_handler: async (
+                        blobInfo: any,
+                        _progress: any
+                      ) => {
+                        try {
+                          const formData = new FormData();
+                          formData.append('file', blobInfo.blob());
+                          formData.append(
+                            'upload_preset',
+                            import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+                          );
+
+                          const res = await fetch(
+                            `https://api.cloudinary.com/v1_1/${
+                              import.meta.env.VITE_CLOUDINARY_NAME
+                            }/image/upload`,
+                            {
+                              method: 'POST',
+                              body: formData,
+                            }
+                          );
+
+                          const data = await res.json();
+                          console.log('Cloudinary response:', data);
+
+                          if (data.secure_url) {
+                            return data.secure_url;
+                          } else {
+                            throw new Error(
+                              data.error?.message || 'Upload failed'
+                            );
+                          }
+                        } catch (err) {
+                          console.error(err);
+                          throw err;
+                        }
+                      },
                     }}
                   />
                 </Form.Item>
@@ -428,39 +499,99 @@ const ArticleFormPage = () => {
               </Card>
 
               <Card title="Media" className="mb-6">
-                <Form.Item name="thumbnail" label="Thumbnail">
-                  <div className="flex gap-2 mb-2">
-                    <Input placeholder="Enter thumbnail URL" />
-                    <Upload
-                      showUploadList={false}
-                      beforeUpload={() => {
-                        message.info(
-                          'File upload functionality will be implemented'
-                        );
-                        return false;
-                      }}
-                    >
-                      <Button icon={<UploadOutlined />}>Upload</Button>
-                    </Upload>
-                  </div>
-                </Form.Item>
+                <Spin spinning={uploadingImage}>
+                  {/* Feature Image Upload */}
+                  <Form.Item label="Featured Image">
+                    <Form.Item name="image" noStyle>
+                      <Input placeholder="Feature image URL (auto-filled on upload)" />
+                    </Form.Item>
+                    <div className="mt-2 flex gap-2">
+                      <Upload
+                        accept="image/*"
+                        showUploadList={false}
+                        beforeUpload={(file) => {
+                          handleImageUpload(file);
+                          return false;
+                        }}
+                        disabled={uploadingImage}
+                      >
+                        <Button
+                          icon={<UploadOutlined />}
+                          disabled={uploadingImage}
+                        >
+                          Upload Feature Image
+                        </Button>
+                      </Upload>
+                      {form.getFieldValue('image') && (
+                        <Button
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => form.setFieldValue('image', '')}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    {form.getFieldValue('image') && (
+                      <div className="mt-2">
+                        <Image
+                          src={form.getFieldValue('image')}
+                          alt="Feature"
+                          style={{ maxWidth: '100%', maxHeight: 200 }}
+                        />
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                      Uploading feature image will auto-generate thumbnail
+                    </div>
+                  </Form.Item>
 
-                <Form.Item name="image" label="Featured Image">
-                  <div className="flex gap-2 mb-2">
-                    <Input placeholder="Enter featured image URL" />
-                    <Upload
-                      showUploadList={false}
-                      beforeUpload={() => {
-                        message.info(
-                          'File upload functionality will be implemented'
-                        );
-                        return false;
-                      }}
-                    >
-                      <Button icon={<UploadOutlined />}>Upload</Button>
-                    </Upload>
-                  </div>
-                </Form.Item>
+                  {/* Thumbnail (auto-generated or manual) */}
+                  <Form.Item label="Thumbnail" className="mt-4">
+                    <Form.Item name="thumbnail" noStyle>
+                      <Input placeholder="Thumbnail URL (auto-generated from feature image)" />
+                    </Form.Item>
+                    <div className="mt-2 flex gap-2">
+                      <Upload
+                        accept="image/*"
+                        showUploadList={false}
+                        beforeUpload={(file) => {
+                          handleThumbnailUpload(file);
+                          return false;
+                        }}
+                        disabled={uploadingImage}
+                      >
+                        <Button
+                          icon={<UploadOutlined />}
+                          disabled={uploadingImage}
+                        >
+                          Upload Custom Thumbnail
+                        </Button>
+                      </Upload>
+                      {form.getFieldValue('thumbnail') && (
+                        <Button
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => form.setFieldValue('thumbnail', '')}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    {form.getFieldValue('thumbnail') && (
+                      <div className="mt-2">
+                        <Image
+                          src={form.getFieldValue('thumbnail')}
+                          alt="Thumbnail"
+                          style={{ maxWidth: '100%', maxHeight: 150 }}
+                        />
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-500 mt-1">
+                      Optional: Upload custom thumbnail or use auto-generated
+                    </div>
+                  </Form.Item>
+                </Spin>
               </Card>
 
               <Card title="SEO">
